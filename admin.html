@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - ระบบบริหารจัดการข้อมูล</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root {
+      --gov-blue: #1e3a8a;
+      --gov-gold: #c5a059;
+      --modern-bg: #f8fafc;
+      --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
+    body {
+      background-color: var(--modern-bg);
+      font-family: 'Sarabun', sans-serif;
+      color: #1e293b;
+    }
+    .navbar {
+      background: linear-gradient(90deg, var(--gov-blue) 0%, #3b82f6 100%) !important;
+      padding: 1rem 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .nav-tabs {
+      border-bottom: none;
+      gap: 0.5rem;
+      padding: 1rem 0;
+    }
+    .nav-tabs .nav-link {
+      border: none;
+      border-radius: 12px !important;
+      padding: 0.75rem 1.5rem;
+      font-weight: 500;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+    .nav-tabs .nav-link:hover {
+      background: #e2e8f0;
+      color: var(--gov-blue);
+    }
+    .nav-tabs .nav-link.active {
+      background: var(--gov-blue) !important;
+      color: white !important;
+      box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+    }
+    .card {
+      border: none;
+      border-radius: 16px;
+      box-shadow: var(--card-shadow);
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+    .card-header {
+      background: white !important;
+      border-bottom: 1px solid #f1f5f9 !important;
+      padding: 1.25rem 1.5rem !important;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-header h5 {
+      margin: 0;
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 1.1rem;
+    }
+    .table thead th {
+      background: #f8fafc;
+      border-bottom: 2px solid #f1f5f9;
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.025em;
+      padding: 1rem 1.5rem;
+    }
+    .table tbody td {
+      padding: 1rem 1.5rem;
+      vertical-align: middle;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .btn {
+      border-radius: 10px;
+      padding: 0.5rem 1rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--gov-blue);
+      border-color: var(--gov-blue);
+    }
+    .btn-primary:hover {
+      background: #1e40af;
+      transform: translateY(-1px);
+    }
+    .modal-content {
+      border: none;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .modal-header {
+      background: #f8fafc;
+      border-bottom: 1px solid #f1f5f9;
+      padding: 1.5rem;
+    }
+    .form-control, .form-select {
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      padding: 0.625rem 1rem;
+    }
+    .form-control:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .badge {
+      border-radius: 6px;
+      padding: 0.5em 0.75em;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+      <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+        <i class="bi bi-shield-check-fill fs-3 me-2 text-warning"></i>
+        <span>ระบบบริหารจัดการข้อมูลโทรมาตร</span>
+      </a>
+      <div class="navbar-nav ms-auto">
+        <a class="btn btn-light btn-sm me-2" href="/">
+          <i class="bi bi-map me-1"></i>หน้าแผนที่
+        </a>
+        <a class="btn btn-outline-light btn-sm" href="/logout">
+          <i class="bi bi-box-arrow-right me-1"></i>ออกจากระบบ
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active" id="stations-tab" data-bs-toggle="tab" data-bs-target="#stations" type="button">
+          <i class="bi bi-geo-alt me-2"></i>จัดการสถานีวัดน้ำ
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button">
+          <i class="bi bi-people me-2"></i>จัดการผู้ใช้งาน
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button">
+          <i class="bi bi-journal-text me-2"></i>บันทึกกิจกรรม
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="adminTabContent">
+      <!-- Stations Tab -->
+      <div class="tab-pane fade show active" id="stations" role="tabpanel">
+        <div class="card">
+          <div class="card-header">
+            <h5>รายการสถานีวัดน้ำในระบบ</h5>
+            <button class="btn btn-primary btn-sm" onclick="showStationModal()">
+              <i class="bi bi-plus-circle me-1"></i>เพิ่มสถานีใหม่
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>ชื่อสถานี</th>
+                  <th>พิกัด (Lat, Lng)</th>
+                  <th>ระดับน้ำ/ฝน</th>
+                  <th>สถานะ</th>
+                  <th class="text-end">เครื่องมือ</th>
+                </tr>
+              </thead>
+              <tbody id="stationList"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Tab -->
+      <div class="tab-pane fade" id="users" role="tabpanel">
+        <div class="card">
+          <div class="card-header">
+            <h5>จัดการบัญชีผู้ใช้งาน</h5>
+            <button class="btn btn-primary btn-sm" onclick="showUserModal()">
+              <i class="bi bi-person-plus me-1"></i>เพิ่มผู้ใช้
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>ชื่อผู้ใช้</th>
+                  <th>บทบาท</th>
+                  <th>การอนุมัติ</th>
+                  <th class="text-end">เครื่องมือ</th>
+                </tr>
+              </thead>
+              <tbody id="userList"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logs Tab -->
+      <div class="tab-pane fade" id="logs" role="tabpanel">
+        <div class="card">
+          <div class="card-header">
+            <h5>ประวัติกิจกรรมล่าสุด</h5>
+            <button class="btn btn-outline-danger btn-sm" onclick="clearLogs()">
+              <i class="bi bi-trash me-1"></i>ล้างประวัติเก่า
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>เวลา</th>
+                  <th>ผู้ใช้งาน</th>
+                  <th>กิจกรรม</th>
+                  <th>รายละเอียด</th>
+                </tr>
+              </thead>
+              <tbody id="logList"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Modal -->
+  <div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="userModalTitle">จัดการผู้ใช้งาน</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="userForm">
+          <div class="modal-body">
+            <input type="hidden" id="userId">
+            <div class="mb-3">
+              <label class="form-label">ชื่อผู้ใช้งาน</label>
+              <input type="text" class="form-control" id="username" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">รหัสผ่าน</label>
+              <input type="password" class="form-control" id="userPassword" placeholder="เว้นว่างไว้หากไม่ต้องการเปลี่ยน">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">บทบาท</label>
+              <select class="form-select" id="userRole">
+                <option value="user">ผู้ใช้งานทั่วไป (User)</option>
+                <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+              </select>
+            </div>
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="userApproved">
+              <label class="form-check-label">อนุมัติการใช้งาน</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Station Modal -->
+  <div class="modal fade" id="stationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="stationModalTitle">จัดการสถานีวัดน้ำ</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="stationForm">
+          <div class="modal-body">
+            <input type="hidden" id="stationId">
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label class="form-label">ชื่อสถานี</label>
+                <input type="text" class="form-control" id="stationName" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">ละติจูด (Lat)</label>
+                <input type="number" step="any" class="form-control" id="stationLat" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">ลองจิจูด (Lng)</label>
+                <input type="number" step="any" class="form-control" id="stationLng" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">ระดับน้ำปัจจุบัน</label>
+                <input type="number" step="any" class="form-control" id="waterLevel">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">ปริมาณฝนปัจจุบัน</label>
+                <input type="number" step="any" class="form-control" id="rainLevel">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">ระดับแจ้งเตือน (วิกฤต)</label>
+                <input type="number" step="any" class="form-control" id="warningLevel">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">สถานะสถานี</label>
+                <select class="form-select" id="stationStatus">
+                  <option value="normal">ปกติ</option>
+                  <option value="warning">เฝ้าระวัง</option>
+                  <option value="critical">วิกฤต</option>
+                  <option value="offline">ออฟไลน์</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary">บันทึกข้อมูลสถานี</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    const userModal = new bootstrap.Modal(document.getElementById('userModal'));
+    const stationModal = new bootstrap.Modal(document.getElementById('stationModal'));
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadStations();
+      document.getElementById('stations-tab').addEventListener('click', loadStations);
+      document.getElementById('users-tab').addEventListener('click', loadUsers);
+      document.getElementById('logs-tab').addEventListener('click', loadLogs);
+    });
+
+    /* --- User Management --- */
+    function loadUsers() {
+      fetch('/api/users').then(r => r.json()).then(data => {
+        const list = document.getElementById('userList');
+        list.innerHTML = data.map(u => `
+          <tr>
+            <td>${u.id}</td>
+            <td class="fw-bold">${u.username}</td>
+            <td><span class="badge ${u.role==='admin'?'bg-danger':'bg-secondary'}">${u.role}</span></td>
+            <td>
+              <span class="badge ${u.approved?'bg-success':'bg-warning'}">${u.approved?'อนุมัติแล้ว':'รออนุมัติ'}</span>
+            </td>
+            <td class="text-end">
+              <button class="btn btn-light btn-sm" onclick="editUser(${u.id})"><i class="bi bi-pencil text-primary"></i></button>
+              <button class="btn btn-light btn-sm" onclick="deleteUser(${u.id})"><i class="bi bi-trash text-danger"></i></button>
+            </td>
+          </tr>
+        `).join('');
+      });
+    }
+
+    function showUserModal() {
+      document.getElementById('userForm').reset();
+      document.getElementById('userId').value = '';
+      document.getElementById('userModalTitle').textContent = 'เพิ่มผู้ใช้ใหม่';
+      userModal.show();
+    }
+
+    function editUser(id) {
+      fetch('/api/users').then(r => r.json()).then(data => {
+        const u = data.find(x => x.id === id);
+        if (u) {
+          document.getElementById('userId').value = u.id;
+          document.getElementById('username').value = u.username;
+          document.getElementById('userPassword').value = '';
+          document.getElementById('userRole').value = u.role;
+          document.getElementById('userApproved').checked = u.approved;
+          document.getElementById('userModalTitle').textContent = 'แก้ไขข้อมูลผู้ใช้: ' + u.username;
+          userModal.show();
+        }
+      });
+    }
+
+    document.getElementById('userForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('userId').value;
+      const data = {
+        username: document.getElementById('username').value,
+        password: document.getElementById('userPassword').value,
+        role: document.getElementById('userRole').value,
+        approved: document.getElementById('userApproved').checked
+      };
+
+      const response = await fetch(id ? `/api/users/${id}` : '/api/users', {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        Swal.fire({ icon: 'success', title: 'บันทึกข้อมูลสำเร็จ', showConfirmButton: false, timer: 1500 });
+        userModal.hide();
+        loadUsers();
+      } else {
+        const err = await response.json();
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.error });
+      }
+    });
+
+    function deleteUser(id) {
+      Swal.fire({
+        title: 'ยืนยันการลบ?', text: "ข้อมูลผู้ใช้จะถูกลบออกจากระบบถาวร",
+        icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#64748b', confirmButtonText: 'ยืนยันการลบ'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          fetch(`/api/users/${id}`, { method: 'DELETE' }).then(() => {
+            Swal.fire('ลบแล้ว!', 'ข้อมูลถูกลบเรียบร้อย', 'success');
+            loadUsers();
+          });
+        }
+      });
+    }
+
+    /* --- Station Management --- */
+    function loadStations() {
+      fetch('/api/stations').then(r => r.json()).then(data => {
+        const list = document.getElementById('stationList');
+        list.innerHTML = data.map(s => `
+          <tr>
+            <td>${s.id}</td>
+            <td class="fw-bold">${s.name}</td>
+            <td><small class="text-muted">${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</small></td>
+            <td>
+              <div class="d-flex flex-column">
+                <span class="text-primary small"><i class="bi bi-water me-1"></i>${s.water_level || 0} ม.</span>
+                <span class="text-success small"><i class="bi bi-cloud-rain me-1"></i>${s.rain_level || 0} มม.</span>
+              </div>
+            </td>
+            <td><span class="badge bg-${getStatusColor(s.status)}">${s.status}</span></td>
+            <td class="text-end">
+              <button class="btn btn-light btn-sm" onclick="editStation(${s.id})"><i class="bi bi-pencil text-primary"></i></button>
+              <button class="btn btn-light btn-sm" onclick="deleteStation(${s.id})"><i class="bi bi-trash text-danger"></i></button>
+            </td>
+          </tr>
+        `).join('');
+      });
+    }
+
+    function showStationModal() {
+      document.getElementById('stationForm').reset();
+      document.getElementById('stationId').value = '';
+      document.getElementById('stationModalTitle').textContent = 'เพิ่มสถานีใหม่';
+      stationModal.show();
+    }
+
+    function editStation(id) {
+      fetch('/api/stations').then(r => r.json()).then(data => {
+        const s = data.find(x => x.id === id);
+        if (s) {
+          document.getElementById('stationId').value = s.id;
+          document.getElementById('stationName').value = s.name;
+          document.getElementById('stationLat').value = s.lat;
+          document.getElementById('stationLng').value = s.lng;
+          document.getElementById('waterLevel').value = s.water_level;
+          document.getElementById('rainLevel').value = s.rain_level;
+          document.getElementById('warningLevel').value = s.warning_level;
+          document.getElementById('stationStatus').value = s.status;
+          document.getElementById('stationModalTitle').textContent = 'แก้ไขสถานี: ' + s.name;
+          stationModal.show();
+        }
+      });
+    }
+
+    document.getElementById('stationForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('stationId').value;
+      const data = {
+        name: document.getElementById('stationName').value,
+        lat: parseFloat(document.getElementById('stationLat').value),
+        lng: parseFloat(document.getElementById('stationLng').value),
+        water_level: parseFloat(document.getElementById('waterLevel').value || 0),
+        rain_level: parseFloat(document.getElementById('rainLevel').value || 0),
+        warning_level: parseFloat(document.getElementById('warningLevel').value || 0),
+        status: document.getElementById('stationStatus').value
+      };
+
+      const response = await fetch(id ? `/api/stations/${id}` : '/api/stations', {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        Swal.fire({ icon: 'success', title: 'บันทึกสถานีสำเร็จ', showConfirmButton: false, timer: 1500 });
+        stationModal.hide();
+        loadStations();
+      }
+    });
+
+    function deleteStation(id) {
+      Swal.fire({
+        title: 'ลบสถานี?', text: "ข้อมูลสถานีจะหายไปจากระบบทันที",
+        icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'ลบข้อมูล'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          fetch(`/api/stations/${id}`, { method: 'DELETE' }).then(() => {
+            Swal.fire('ลบแล้ว!', '', 'success');
+            loadStations();
+          });
+        }
+      });
+    }
+
+    function loadLogs() {
+      fetch('/api/logs').then(r => r.json()).then(data => {
+        const list = document.getElementById('logList');
+        list.innerHTML = data.map(l => `
+          <tr>
+            <td><small class="text-muted">${new Date(l.timestamp).toLocaleString('th-TH')}</small></td>
+            <td><span class="fw-bold text-dark">${l.user_name || 'System'}</span></td>
+            <td><span class="badge bg-info-subtle text-info border border-info-subtle">${l.action}</span></td>
+            <td><small>${l.details}</small></td>
+          </tr>
+        `).join('');
+      });
+    }
+
+    function clearLogs() {
+      Swal.fire({ title: 'ล้างประวัติกิจกรรม?', text: 'ล้างข้อมูลที่เก่ากว่า 30 วัน', icon: 'warning', showCancelButton: true }).then(r => {
+        if(r.isConfirmed) fetch('/api/logs/clear', {method:'POST'}).then(() => loadLogs());
+      });
+    }
+
+    function getStatusColor(s) {
+      if (s === 'normal') return 'success';
+      if (s === 'warning') return 'warning';
+      if (s === 'critical') return 'danger';
+      return 'secondary';
+    }
+  </script>
+</body>
+</html>

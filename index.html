@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบโทรมาตร - เพื่อการพยากรณ์น้ำและเตือนภัย</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Fonts (Thai) -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; margin: 0; padding: 0; }
+    body {
+      font-family: 'Kanit', 'Sarabun', sans-serif;
+      background: #f0f2f5;
+      color: #000000d9;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    :root {
+      --header-height: 64px;
+      --primary-color: #1976d2;
+      --border-color: #e0e6ed;
+      --text-main: #1e293b;
+      --text-secondary: #64748b;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+      --transition: all 0.2s ease;
+      --success-color: #52c41a;
+      --warning-color: #faad14;
+      --error-color: #f5222d;
+      --panel-width: 350px;
+    }
+    header {
+      height: var(--header-height);
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      z-index: 1005;
+      border-bottom-left-radius: 24px;
+      border-bottom-right-radius: 24px;
+      border: 1px solid var(--border-color);
+      margin: 0 10px;
+    }
+    .logo-img { height: 40px; cursor: pointer; }
+    .header-nav { display: flex; gap: 32px; margin-left: 48px; flex: 1; }
+    .nav-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 400;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      position: relative;
+      padding: 20px 0;
+      transition: var(--transition);
+    }
+    .nav-link:hover, .nav-link.active { color: var(--primary-color); }
+    .nav-link.active::after {
+      content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--primary-color);
+    }
+    .login-btn {
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      padding: 6px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      transition: var(--transition);
+      text-decoration: none;
+    }
+    .login-btn:hover { background: #40a9ff; box-shadow: 0 2px 4px rgba(24, 144, 255, 0.2); }
+    .clock-container { display: flex; flex-direction: column; align-items: flex-end; min-width: 100px; }
+    .clock-time { font-size: 16px; font-weight: 600; color: #000; }
+    .clock-date { font-size: 11px; color: #8c8c8c; }
+    .main { display: flex; flex: 1; height: calc(100vh - 64px); overflow: hidden; position: relative; }
+    .box-station-search {
+      position: absolute; top: 40px; left: 40px; width: 350px; background: transparent; padding: 0; z-index: 1001; transition: transform 0.3s cubic-bezier(0.7, 0.3, 0.1, 1);
+    }
+    .box-station-search.collapsed { transform: translateX(-310px); }
+    .box-station-search.collapsed h1 span, .box-station-search.collapsed p, .box-station-search.collapsed .search-input-container {
+      opacity: 0; visibility: hidden; pointer-events: none;
+    }
+    .box-station-search h1 {
+      margin: 0; font-size: 28px; font-weight: 600; color: #333; display: flex; justify-content: space-between; align-items: center; gap: 10px; transition: var(--transition);
+    }
+    .box-station-search p { margin: 4px 0 24px; font-size: 16px; color: #555; }
+    .search-input-container {
+      position: relative; background: #fff; border-radius: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); overflow: hidden; border: 1px solid #eee; transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .search-input { width: 100%; padding: 12px 16px; border: none; font-size: 14px; outline: none; background: transparent; }
+    .map-container { flex: 1; position: relative; overflow: hidden; }
+    #map { width: 100%; height: 100%; }
+    .leaflet-popup-content-wrapper { background: #ffffff; border: 1px solid #e0e6ed; border-top: 4px solid #1976d2; border-radius: 12px; color: #2c3e50; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); }
+    .popup-content { padding: 6px; }
+    .popup-title { font-size: 15px; font-weight: 700; color: #1976d2; margin-bottom: 10px; }
+    .popup-row { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 6px; font-size: 12px; }
+    .popup-label { color: #64748b; }
+    .popup-value { font-weight: 700; color: #1e293b; }
+    .popup-btn { margin-top: 10px; width: 100%; padding: 8px; background: #1976d2; border: none; border-radius: 8px; color: #ffffff; font-weight: 700; font-size: 12px; cursor: pointer; transition: background 0.2s; }
+    .map-legend { position: absolute; bottom: 24px; right: 24px; background: #ffffff; border-radius: 8px; padding: 14px; font-size: 12px; box-shadow: var(--shadow-md); z-index: 1000; border: 1px solid var(--border-color); min-width: 150px; }
+    .legend-title { font-size: 11px; font-weight: 700; color: #1976d2; margin-bottom: 10px; text-transform: uppercase; }
+    .legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .legend-circle { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.1); flex-shrink: 0; }
+    .lc-normal { background: #2ecc71; }
+    .lc-warning { background: #f39c12; }
+    .lc-critical { background: #e74c3c; }
+    .lc-offline { background: #7f8c8d; }
+    .map-info-overlay { position: absolute; bottom: 24px; left: 24px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); padding: 16px; border-radius: 8px; box-shadow: var(--shadow-md); z-index: 1001; border: 1px solid var(--border-color); }
+    .map-info-title { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 500; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+    .map-stat-row { display: flex; gap: 20px; }
+    .map-stat { text-align: center; }
+    .map-stat-num { font-size: 18px; font-weight: 600; }
+    .map-stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .right-panel { width: 0; height: 100%; background: #fff; border-left: 1px solid var(--border-color); transition: width 0.3s cubic-bezier(0.7, 0.3, 0.1, 1); overflow-y: auto; z-index: 1002; }
+    .right-panel.open { width: var(--panel-width); }
+    .right-panel-header { padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: #fff; z-index: 10; }
+    .right-panel-title { font-size: 18px; font-weight: 600; color: var(--text-main); }
+    .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-secondary); padding: 4px; border-radius: 4px; transition: var(--transition); }
+    .detail-card { background: #fff; border-radius: 8px; border: 1px solid var(--border-color); padding: 20px; margin: 24px; box-shadow: var(--shadow-sm); }
+    .detail-card-title { font-size: 14px; font-weight: 500; color: var(--text-secondary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .gauge-row { display: flex; justify-content: space-between; }
+    .gauge-item { text-align: center; flex: 1; }
+    .gauge-value { font-size: 28px; font-weight: 700; line-height: 1.2; }
+    .gauge-unit { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    .gauge-label { font-size: 13px; color: var(--text-main); margin-top: 8px; }
+    .chart-box { background: #fff; border-radius: 8px; border: 1px solid var(--border-color); padding: 20px; margin: 0 24px 24px; box-shadow: var(--shadow-sm); }
+    .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 0 24px 24px; }
+    .info-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+    .info-val { font-size: 16px; font-weight: 600; }
+
+    /* Custom attribution to hide flag */
+    .leaflet-control-attribution { font-size: 11px !important; }
+    .leaflet-attribution-flag { display: none !important; }
+    
+    /* Reposition zoom control higher if needed to avoid overlap */
+    .leaflet-bottom.leaflet-right .leaflet-control-zoom {
+      margin-bottom: 150px !important; /* Above the legend box */
+    }
+
+    /* Custom Tooltip Style */
+    .custom-tooltip {
+      background: rgba(0, 51, 102, 0.9);
+      border: 1px solid var(--gov-gold);
+      color: white;
+      font-family: 'Sarabun', sans-serif;
+      border-radius: 4px;
+      padding: 5px 10px;
+      font-size: 13px;
+    }
+    .leaflet-tooltip-pane .custom-tooltip::before {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <img src="https://telerid.rid.go.th/static/media/logo.7e64c49a.png" class="logo-img" alt="RID Logo" onclick="location.reload()">
+    <div class="header-nav">
+      <a class="nav-link active">หน้าหลัก</a>
+      <span id="admin-nav" style="display:none;"><a href="/admin" class="nav-link">ระบบจัดการข้อมูล</a></span>
+    </div>
+    <div class="header-right-actions" style="display: flex; align-items: center; gap: 20px;">
+      <div class="clock-container">
+        <div class="clock-time" id="clock">--:--:--</div>
+        <div class="clock-date" id="clock-date">...</div>
+      </div>
+      <div id="auth-btn-container">
+        <a href="/login" class="login-btn">เข้าสู่ระบบ</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="map-container">
+      <div id="map"></div>
+      <div class="box-station-search" id="search-box">
+        <h1><span>ระบบโทรมาตร</span>
+          <div class="collapse-btn" onclick="toggleSearchCollapse()" style="background:#fff; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-left:auto">
+            <svg id="fold-icon" viewBox="64 64 896 896" width="18" height="18" fill="#555">
+              <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 000 13.8z"></path>
+            </svg>
+          </div>
+        </h1>
+        <p>เพื่อการพยากรณ์น้ำและเตือนภัย</p>
+        <div class="search-input-container">
+          <svg style="position:absolute; left:16px; top:50%; transform:translateY(-50%); width:16px; height:16px; fill:#bfbfbf" viewBox="64 64 896 896">
+            <path d="M909.6 854.5L649.9 594.8C690.2 542.7 712 479 712 412c0-165.7-134.3-300-300-300S112 246.3 112 412s134.3 300 300 300c67 0 130.7-21.8 182.8-62.1l259.7 259.7c4.3 4.3 11.4 4.3 15.7 0l45.2-45.2c2.3-2.3 2.3-6.1 0-8.4zM412 650c-131.4 0-238-106.6-238-238s106.6-238 238-238 238 106.6 238 238-106.6 238-238 238z"></path>
+          </svg>
+          <input type="text" class="search-input" style="padding-left:44px" placeholder="ค้นหาชื่อสถานี..." id="station-search" oninput="filterStationsByText()">
+        </div>
+      </div>
+      <div class="map-info-overlay">
+        <div class="map-info-title">ภาพรวมสถานีวัด</div>
+        <div class="map-stat-row">
+          <div class="map-stat">
+            <div class="map-stat-num" id="ov-total">0</div>
+            <div class="map-stat-label">ทั้งหมด</div>
+          </div>
+          <div class="map-stat">
+            <div class="map-stat-num" style="color:#2ecc71" id="ov-normal">0</div>
+            <div class="map-stat-label">ปกติ</div>
+          </div>
+          <div class="map-stat">
+            <div class="map-stat-num" style="color:#f39c12" id="ov-warning">0</div>
+            <div class="map-stat-label">เฝ้าระวัง</div>
+          </div>
+          <div class="map-stat">
+            <div class="map-stat-num" style="color:#e74c3c" id="ov-critical">0</div>
+            <div class="map-stat-label">วิกฤต</div>
+          </div>
+        </div>
+      </div>
+      <div class="map-legend">
+        <div class="legend-title">สถานะสถานี</div>
+        <div class="legend-row"><div class="legend-circle lc-normal"></div><span>ปกติ</span></div>
+        <div class="legend-row"><div class="legend-circle lc-warning"></div><span>เฝ้าระวัง</span></div>
+        <div class="legend-row"><div class="legend-circle lc-critical"></div><span>วิกฤต</span></div>
+        <div class="legend-row"><div class="legend-circle lc-offline"></div><span>ออฟไลน์</span></div>
+      </div>
+    </div>
+    <div class="right-panel" id="right-panel">
+      <div class="right-panel-header">
+        <div class="right-panel-title" id="detail-title">รายละเอียด</div>
+        <button class="close-btn" onclick="closeDetail()">✕</button>
+      </div>
+      <div class="detail-card">
+        <div class="detail-card-title">ค่าปัจจุบัน</div>
+        <div class="gauge-row">
+          <div class="gauge-item">
+            <div class="gauge-value" id="d-waterlevel" style="color:var(--primary-color)">--</div>
+            <div class="gauge-unit">เมตร</div>
+            <div class="gauge-label">ระดับน้ำ</div>
+          </div>
+          <div class="gauge-item">
+            <div class="gauge-value" id="d-rain" style="color:var(--success-color)">--</div>
+            <div class="gauge-unit">มม.</div>
+            <div class="gauge-label">ปริมาณฝน</div>
+          </div>
+        </div>
+      </div>
+      <div class="chart-box">
+        <div class="detail-card-title">กราฟข้อมูล</div>
+        <div style="height: 180px;"><canvas id="miniChart"></canvas></div>
+      </div>
+      <div class="grid-info">
+        <div class="info-item"><div class="info-label">ระดับตลิ่ง</div><div class="info-val" id="d-bank">--</div></div>
+        <div class="info-item"><div class="info-label">สถานะ</div><div class="info-val" id="d-status">--</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STATUS_COLOR = { normal: '#52c41a', warning: '#faad14', critical: '#f5222d', offline: '#bfbfbf' };
+    const STATUS_LABEL = { normal: 'ปกติ', warning: 'เฝ้าระวัง', critical: 'วิกฤต', offline: 'ออฟไลน์' };
+    let STATIONS = [];
+    let map = null, markers = {}, miniChart = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initClock();
+      checkSession();
+      loadStations();
+    });
+
+    function initClock() {
+      function tick() {
+        const now = new Date();
+        document.getElementById('clock').textContent = now.toLocaleTimeString('th-TH', { hour12: false });
+        document.getElementById('clock-date').textContent = now.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      }
+      tick(); setInterval(tick, 1000);
+    }
+
+    function checkSession() {
+      fetch('/api/session').then(r => r.json()).then(data => {
+        const authContainer = document.getElementById('auth-btn-container');
+        const adminNav = document.getElementById('admin-nav');
+        if (data.user) {
+          authContainer.innerHTML = `<a href="/logout" class="login-btn">ออกจากระบบ</a>`;
+          if (data.user.role === 'admin') adminNav.style.display = 'inline';
+        } else {
+          authContainer.innerHTML = `<a href="/login" class="login-btn">เข้าสู่ระบบ</a>`;
+          adminNav.style.display = 'none';
+        }
+      });
+    }
+
+    function loadStations() {
+      fetch('/api/stations/public').then(r => r.json()).then(data => {
+        STATIONS = data;
+        initMap();
+        updateStatusBar();
+      });
+    }
+
+    function initMap() {
+      if (map) return;
+      map = L.map('map', { 
+        zoomControl: false,
+        attributionControl: false 
+      }).setView([13.736, 100.523], 6);
+
+      // Add custom attribution
+      L.control.attribution({ prefix: 'Leaflet | &copy; OpenStreetMap contributors' }).addTo(map);
+
+      // Layers Definitions
+      const topoLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}');
+      const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+      const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+      const waterLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png').addTo(map); // Set as DEFAULT
+      
+      const labelsLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}');
+      const terrainShade = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', { opacity: 0.5 });
+
+      // Grouping: Base Maps (Radio) vs Overlays (Checkbox)
+      // To allow full stacking as requested, we move most to Overlays
+      const baseMaps = {
+        "พื้นหลังปกติ (ว่าง)": L.tileLayer('') 
+      };
+
+      const overlayMaps = {
+        "🌊 เน้นแหล่งน้ำ/พื้นที่ (หลัก)": waterLayer,
+        "⛰️ แผนที่ภูมิประเทศ": topoLayer,
+        "🌍 ภาพถ่ายดาวเทียม": satLayer,
+        "🛣️ แผนที่ถนน": streetLayer,
+        "📍 ชื่อสถานที่/ขอบเขต": labelsLayer,
+        "🌗 แรเงาความสูงพื้นผิว": terrainShade
+      };
+
+      L.control.layers(baseMaps, overlayMaps, { position: 'topright', collapsed: false }).addTo(map);
+      
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+      STATIONS.forEach(s => {
+        const icon = L.divIcon({
+          className: 'custom-marker',
+          html: `<div style="background:${STATUS_COLOR[s.status]}; width:20px; height:20px; border-radius:50%; border:2px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,0.2);"></div>`,
+          iconSize: [20, 20], iconAnchor: [10, 10]
+        });
+
+        const tooltipContent = `
+          <div style="text-align:center">
+            <div style="font-weight:bold; border-bottom:1px solid rgba(255,255,255,0.3); margin-bottom:3px; padding-bottom:2px">${s.name}</div>
+            <div style="font-size:11px">
+              💧 ระดับน้ำ: ${s.water_level ? s.water_level.toFixed(2) : '--'} ม.<br>
+              🌧️ ฝน: ${s.rain_level ? s.rain_level.toFixed(1) : '--'} มม.
+            </div>
+          </div>
+        `;
+
+        const marker = L.marker([s.lat, s.lng], { icon })
+          .addTo(map)
+          .bindPopup(buildPopup(s))
+          .bindTooltip(tooltipContent, { 
+            className: 'custom-tooltip',
+            direction: 'top',
+            offset: [0, -10]
+          });
+
+        marker.on('click', () => selectStation(s.id));
+        markers[s.id] = marker;
+      });
+    }
+
+    function buildPopup(s) {
+      return `<div class="popup-content">
+        <div class="popup-title">${s.name}</div>
+        <div class="popup-row"><span class="popup-label">ระดับน้ำ</span><span class="popup-value" style="color:#1976d2">${s.water_level?s.water_level.toFixed(2):'--'} ม.</span></div>
+        <div class="popup-row"><span class="popup-label">ปริมาณฝน</span><span class="popup-value" style="color:#52c41a">${s.rain_level?s.rain_level.toFixed(1):'--'} มม.</span></div>
+        <button class="popup-btn" onclick="selectStation(${s.id})">ดูรายละเอียด</button>
+      </div>`;
+    }
+
+    function selectStation(id) {
+      const s = STATIONS.find(x => x.id === id);
+      if (!s) return;
+      document.getElementById('right-panel').classList.add('open');
+      document.getElementById('detail-title').textContent = s.name;
+      document.getElementById('d-waterlevel').textContent = s.water_level ? s.water_level.toFixed(2) : '--';
+      document.getElementById('d-rain').textContent = s.rain_level ? s.rain_level.toFixed(1) : '--';
+      document.getElementById('d-bank').textContent = s.warning_level ? s.warning_level.toFixed(2) + ' ม.' : '--';
+      document.getElementById('d-status').textContent = STATUS_LABEL[s.status];
+      document.getElementById('d-status').style.color = STATUS_COLOR[s.status];
+      map.setView([s.lat, s.lng], 10, { animate: true });
+      initMiniChart(s);
+    }
+
+    function initMiniChart(s) {
+      const ctx = document.getElementById('miniChart').getContext('2d');
+      if (miniChart) miniChart.destroy();
+      miniChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['08:00', '09:00', '10:00', '11:00', '12:00'],
+          datasets: [{ label: 'ระดับน้ำ', data: [s.water_level-0.2, s.water_level-0.1, s.water_level, s.water_level, s.water_level], borderColor: '#1976d2', tension: 0.4 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+
+    function toggleSearchCollapse() {
+      document.getElementById('search-box').classList.toggle('collapsed');
+    }
+
+    function closeDetail() { document.getElementById('right-panel').classList.remove('open'); }
+
+    function filterStationsByText() {
+      const q = document.getElementById('station-search').value.toLowerCase();
+      STATIONS.forEach(s => {
+        const m = s.name.toLowerCase().includes(q) || s.id.toString().includes(q);
+        if (markers[s.id]) { if (m) markers[s.id].addTo(map); else map.removeLayer(markers[s.id]); }
+      });
+    }
+
+    function updateStatusBar() {
+      const c = { normal: 0, warning: 0, critical: 0, offline: 0 };
+      STATIONS.forEach(s => c[s.status]++);
+      document.getElementById('ov-total').textContent = STATIONS.length;
+      document.getElementById('ov-normal').textContent = c.normal;
+      document.getElementById('ov-warning').textContent = c.warning;
+      document.getElementById('ov-critical').textContent = c.critical;
+    }
+  </script>
+</body>
+</html>
