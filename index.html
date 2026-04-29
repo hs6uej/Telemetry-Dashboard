@@ -182,10 +182,10 @@
       <a class="nav-link active">หน้าหลัก</a>
       <span id="admin-nav" style="display:none;"><a href="/admin" class="nav-link">ระบบจัดการข้อมูล</a></span>
     </div>
-    <div class="header-right-actions" style="display: flex; align-items: center; gap: 20px;">
-      <div class="clock-container">
-        <div class="clock-time" id="clock">--:--:--</div>
-        <div class="clock-date" id="clock-date">...</div>
+    <div class="header-right-actions" style="display: flex; align-items: center; gap: 15px;">
+      <div id="user-display" class="d-flex align-items-center" style="display:none !important;">
+        <i class="bi bi-person-circle fs-5 me-2 text-primary"></i>
+        <span id="user-name" class="fw-bold text-dark" style="font-size: 14px;">ผู้ใช้งาน</span>
       </div>
       <div id="auth-btn-container">
         <a href="/login" class="login-btn">เข้าสู่ระบบ</a>
@@ -279,29 +279,27 @@
     let map = null, markers = {}, miniChart = null;
 
     window.addEventListener('DOMContentLoaded', () => {
-      initClock();
       checkSession();
       loadStations();
     });
-
-    function initClock() {
-      function tick() {
-        const now = new Date();
-        document.getElementById('clock').textContent = now.toLocaleTimeString('th-TH', { hour12: false });
-        document.getElementById('clock-date').textContent = now.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      }
-      tick(); setInterval(tick, 1000);
-    }
 
     function checkSession() {
       fetch('/api/session').then(r => r.json()).then(data => {
         const authContainer = document.getElementById('auth-btn-container');
         const adminNav = document.getElementById('admin-nav');
+        const userDisplay = document.getElementById('user-display');
+        const userNameSpan = document.getElementById('user-name');
+
         if (data.user) {
           authContainer.innerHTML = `<a href="/logout" class="login-btn">ออกจากระบบ</a>`;
+          userDisplay.style.display = 'flex';
+          userDisplay.style.setProperty('display', 'flex', 'important');
+          userNameSpan.textContent = data.user.username;
           if (data.user.role === 'admin') adminNav.style.display = 'inline';
         } else {
           authContainer.innerHTML = `<a href="/login" class="login-btn">เข้าสู่ระบบ</a>`;
+          userDisplay.style.display = 'none';
+          userDisplay.style.setProperty('display', 'none', 'important');
           adminNav.style.display = 'none';
         }
       });

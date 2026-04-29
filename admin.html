@@ -155,6 +155,11 @@
           <i class="bi bi-journal-text me-2"></i>บันทึกกิจกรรม
         </button>
       </li>
+      <li class="nav-item">
+        <button class="nav-link" id="configs-tab" data-bs-toggle="tab" data-bs-target="#configs" type="button">
+          <i class="bi bi-cloud-arrow-up me-2"></i>ตั้งค่า API ภายนอก
+        </button>
+      </li>
     </ul>
 
     <div class="tab-content" id="adminTabContent">
@@ -231,6 +236,33 @@
                 </tr>
               </thead>
               <tbody id="logList"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Configs Tab -->
+      <div class="tab-pane fade" id="configs" role="tabpanel">
+        <div class="card">
+          <div class="card-header">
+            <h5>รายการเชื่อมต่อ API ภายนอก</h5>
+            <button class="btn btn-primary btn-sm" onclick="showConfigModal()">
+              <i class="bi bi-plus-circle me-1"></i>เพิ่มการเชื่อมต่อ
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>ชื่อการเชื่อมต่อ</th>
+                  <th>Endpoint</th>
+                  <th>ความถี่</th>
+                  <th>ส่งล่าสุด</th>
+                  <th>สถานะ</th>
+                  <th class="text-end">เครื่องมือ</th>
+                </tr>
+              </thead>
+              <tbody id="configList"></tbody>
             </table>
           </div>
         </div>
@@ -334,18 +366,150 @@
     </div>
   </div>
 
+  <!-- API Config Modal -->
+  <div class="modal fade" id="configModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="configModalTitle">ตั้งค่าการเชื่อมต่อ API</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="configForm">
+          <div class="modal-body">
+            <input type="hidden" id="configId">
+            <div class="mb-3">
+              <label class="form-label">ชื่อการเชื่อมต่อ</label>
+              <input type="text" class="form-control" id="configName" placeholder="เช่น กรมชลประทาน" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">API Endpoint (URL)</label>
+              <input type="url" class="form-control" id="apiEndpoint" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">API Key (ถ้ามี)</label>
+              <input type="text" class="form-control" id="apiKey">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">ความถี่ในการส่ง (นาที)</label>
+              <input type="number" class="form-control" id="sendInterval" value="15" min="1" required>
+            </div>
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="configEnabled" checked>
+              <label class="form-check-label">เปิดใช้งาน</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary">บันทึกการตั้งค่า</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
     const userModal = new bootstrap.Modal(document.getElementById('userModal'));
     const stationModal = new bootstrap.Modal(document.getElementById('stationModal'));
+    const configModal = new bootstrap.Modal(document.getElementById('configModal'));
 
     window.addEventListener('DOMContentLoaded', () => {
       loadStations();
       document.getElementById('stations-tab').addEventListener('click', loadStations);
       document.getElementById('users-tab').addEventListener('click', loadUsers);
       document.getElementById('logs-tab').addEventListener('click', loadLogs);
+      document.getElementById('configs-tab').addEventListener('click', loadConfigs);
     });
+
+    /* --- API Config Management --- */
+    function loadConfigs() {
+      fetch('/api/configs').then(r => r.json()).then(data => {
+        const list = document.getElementById('configList');
+        list.innerHTML = data.map(c => `
+          <tr>
+            <td class="fw-bold">${c.name}</td>
+            <td><small class="text-muted">${c.api_endpoint}</small></td>
+            <td>${c.send_interval} นาที</td>
+            <td><small>${c.last_sent ? new Date(c.last_sent).toLocaleString('th-TH') : 'ยังไม่เคยส่ง'}</small></td>
+            <td><span class="badge ${c.enabled?'bg-success':'bg-secondary'}">${c.enabled?'เปิด':'ปิด'}</span></td>
+            <td class="text-end">
+              <button class="btn btn-light btn-sm" onclick="sendDataNow(${c.id})" title="ทดสอบส่ง"><i class="bi bi-send text-info"></i></button>
+              <button class="btn btn-light btn-sm" onclick="editConfig(${c.id})"><i class="bi bi-pencil text-primary"></i></button>
+              <button class="btn btn-light btn-sm" onclick="deleteConfig(${c.id})"><i class="bi bi-trash text-danger"></i></button>
+            </td>
+          </tr>
+        `).join('');
+      });
+    }
+
+    function showConfigModal() {
+      document.getElementById('configForm').reset();
+      document.getElementById('configId').value = '';
+      document.getElementById('configModalTitle').textContent = 'เพิ่มการเชื่อมต่อ API';
+      configModal.show();
+    }
+
+    function editConfig(id) {
+      fetch('/api/configs').then(r => r.json()).then(data => {
+        const c = data.find(x => x.id === id);
+        if (c) {
+          document.getElementById('configId').value = c.id;
+          document.getElementById('configName').value = c.name;
+          document.getElementById('apiEndpoint').value = c.api_endpoint;
+          document.getElementById('apiKey').value = c.api_key;
+          document.getElementById('sendInterval').value = c.send_interval;
+          document.getElementById('configEnabled').checked = c.enabled;
+          document.getElementById('configModalTitle').textContent = 'แก้ไขการเชื่อมต่อ';
+          configModal.show();
+        }
+      });
+    }
+
+    document.getElementById('configForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('configId').value;
+      const data = {
+        name: document.getElementById('configName').value,
+        api_endpoint: document.getElementById('apiEndpoint').value,
+        api_key: document.getElementById('apiKey').value,
+        send_interval: parseInt(document.getElementById('sendInterval').value),
+        enabled: document.getElementById('configEnabled').checked
+      };
+
+      const response = await fetch(id ? `/api/configs/${id}` : '/api/configs', {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', showConfirmButton: false, timer: 1500 });
+        configModal.hide();
+        loadConfigs();
+      }
+    });
+
+    function deleteConfig(id) {
+      Swal.fire({
+        title: 'ลบการเชื่อมต่อนี้?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบข้อมูล'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          fetch(`/api/configs/${id}`, { method: 'DELETE' }).then(() => loadConfigs());
+        }
+      });
+    }
+
+    function sendDataNow(id) {
+      Swal.fire({ title: 'กำลังส่งข้อมูล...', didOpen: () => Swal.showLoading() });
+      fetch(`/api/configs/${id}/send`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          Swal.fire('สำเร็จ', data.message, 'success');
+          loadConfigs();
+        })
+        .catch(() => Swal.fire('ล้มเหลว', 'เกิดข้อผิดพลาด', 'error'));
+    }
 
     /* --- User Management --- */
     function loadUsers() {
@@ -381,10 +545,9 @@
         if (u) {
           document.getElementById('userId').value = u.id;
           document.getElementById('username').value = u.username;
-          document.getElementById('userPassword').value = '';
           document.getElementById('userRole').value = u.role;
           document.getElementById('userApproved').checked = u.approved;
-          document.getElementById('userModalTitle').textContent = 'แก้ไขข้อมูลผู้ใช้: ' + u.username;
+          document.getElementById('userModalTitle').textContent = 'แก้ไขข้อมูลผู้ใช้';
           userModal.show();
         }
       });
@@ -410,22 +573,15 @@
         Swal.fire({ icon: 'success', title: 'บันทึกข้อมูลสำเร็จ', showConfirmButton: false, timer: 1500 });
         userModal.hide();
         loadUsers();
-      } else {
-        const err = await response.json();
-        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.error });
       }
     });
 
     function deleteUser(id) {
       Swal.fire({
-        title: 'ยืนยันการลบ?', text: "ข้อมูลผู้ใช้จะถูกลบออกจากระบบถาวร",
-        icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#64748b', confirmButtonText: 'ยืนยันการลบ'
+        title: 'ลบผู้ใช้?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33'
       }).then((result) => {
         if (result.isConfirmed) {
-          fetch(`/api/users/${id}`, { method: 'DELETE' }).then(() => {
-            Swal.fire('ลบแล้ว!', 'ข้อมูลถูกลบเรียบร้อย', 'success');
-            loadUsers();
-          });
+          fetch(`/api/users/${id}`, { method: 'DELETE' }).then(() => loadUsers());
         }
       });
     }
@@ -438,12 +594,10 @@
           <tr>
             <td>${s.id}</td>
             <td class="fw-bold">${s.name}</td>
-            <td><small class="text-muted">${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</small></td>
+            <td><small>${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</small></td>
             <td>
-              <div class="d-flex flex-column">
-                <span class="text-primary small"><i class="bi bi-water me-1"></i>${s.water_level || 0} ม.</span>
-                <span class="text-success small"><i class="bi bi-cloud-rain me-1"></i>${s.rain_level || 0} มม.</span>
-              </div>
+              <span class="text-primary small"><i class="bi bi-water me-1"></i>${s.water_level || 0} ม.</span> / 
+              <span class="text-success small"><i class="bi bi-cloud-rain me-1"></i>${s.rain_level || 0} มม.</span>
             </td>
             <td><span class="badge bg-${getStatusColor(s.status)}">${s.status}</span></td>
             <td class="text-end">
@@ -474,7 +628,7 @@
           document.getElementById('rainLevel').value = s.rain_level;
           document.getElementById('warningLevel').value = s.warning_level;
           document.getElementById('stationStatus').value = s.status;
-          document.getElementById('stationModalTitle').textContent = 'แก้ไขสถานี: ' + s.name;
+          document.getElementById('stationModalTitle').textContent = 'แก้ไขสถานี';
           stationModal.show();
         }
       });
@@ -500,7 +654,7 @@
       });
 
       if (response.ok) {
-        Swal.fire({ icon: 'success', title: 'บันทึกสถานีสำเร็จ', showConfirmButton: false, timer: 1500 });
+        Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', showConfirmButton: false, timer: 1500 });
         stationModal.hide();
         loadStations();
       }
@@ -508,14 +662,10 @@
 
     function deleteStation(id) {
       Swal.fire({
-        title: 'ลบสถานี?', text: "ข้อมูลสถานีจะหายไปจากระบบทันที",
-        icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'ลบข้อมูล'
+        title: 'ลบสถานี?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33'
       }).then((result) => {
         if (result.isConfirmed) {
-          fetch(`/api/stations/${id}`, { method: 'DELETE' }).then(() => {
-            Swal.fire('ลบแล้ว!', '', 'success');
-            loadStations();
-          });
+          fetch(`/api/stations/${id}`, { method: 'DELETE' }).then(() => loadStations());
         }
       });
     }
@@ -525,8 +675,8 @@
         const list = document.getElementById('logList');
         list.innerHTML = data.map(l => `
           <tr>
-            <td><small class="text-muted">${new Date(l.timestamp).toLocaleString('th-TH')}</small></td>
-            <td><span class="fw-bold text-dark">${l.user_name || 'System'}</span></td>
+            <td><small>${new Date(l.timestamp).toLocaleString('th-TH')}</small></td>
+            <td><span class="fw-bold">${l.user_name || 'System'}</span></td>
             <td><span class="badge bg-info-subtle text-info border border-info-subtle">${l.action}</span></td>
             <td><small>${l.details}</small></td>
           </tr>
@@ -535,7 +685,7 @@
     }
 
     function clearLogs() {
-      Swal.fire({ title: 'ล้างประวัติกิจกรรม?', text: 'ล้างข้อมูลที่เก่ากว่า 30 วัน', icon: 'warning', showCancelButton: true }).then(r => {
+      Swal.fire({ title: 'ล้างประวัติ?', icon: 'warning', showCancelButton: true }).then(r => {
         if(r.isConfirmed) fetch('/api/logs/clear', {method:'POST'}).then(() => loadLogs());
       });
     }
